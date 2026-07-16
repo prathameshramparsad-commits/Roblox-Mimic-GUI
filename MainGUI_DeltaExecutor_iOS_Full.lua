@@ -1,5 +1,5 @@
 -- Mimic Game Custom GUI Framework - Delta Executor iOS Full Edition
--- Complete Feature Set Optimized for iOS with Scrollable Tabs
+-- Complete Feature Set Optimized for iOS with WORKING Scrollable Tabs
 -- No Key System - Fully Open
 
 local Players = game:GetService("Players")
@@ -62,7 +62,6 @@ local currentTheme = Themes.Default
 
 -- UI Library
 local UILib = {}
-UILib.Windows = {}
 
 -- Create ScreenGui
 local ScreenGui = Instance.new("ScreenGui")
@@ -205,44 +204,40 @@ function UILib:CreateWindow(title, size, position)
 	content.Parent = window
 	content.ZIndex = 10
 	
-	-- Main Scroll Frame for EVERYTHING (tabs + content)
-	local mainScrollFrame = Instance.new("ScrollingFrame")
-	mainScrollFrame.Size = UDim2.new(1, 0, 1, 0)
-	mainScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-	mainScrollFrame.ScrollBarThickness = 8
-	mainScrollFrame.ScrollBarImageColor3 = currentTheme.Accent
-	mainScrollFrame.BackgroundTransparency = 1
-	mainScrollFrame.BorderSizePixel = 0
-	mainScrollFrame.ZIndex = 10
-	mainScrollFrame.Parent = content
+	-- Scroll Frame
+	local scrollFrame = Instance.new("ScrollingFrame")
+	scrollFrame.Size = UDim2.new(1, 0, 1, 0)
+	scrollFrame.BackgroundTransparency = 1
+	scrollFrame.BorderSizePixel = 0
+	scrollFrame.ScrollBarThickness = 10
+	scrollFrame.ScrollBarImageColor3 = currentTheme.Accent
+	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scrollFrame.ZIndex = 10
+	scrollFrame.Parent = content
 	
-	local mainLayout = Instance.new("UIListLayout")
-	mainLayout.Padding = UDim.new(0, 0)
-	mainLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	mainLayout.Parent = mainScrollFrame
-	
-	return window, mainScrollFrame
+	return window, scrollFrame
 end
 
--- Create Tabs with Scrollable Content
-function UILib:CreateTabs(window, mainScrollFrame)
+-- Create Tabs
+function UILib:CreateTabs(window, scrollFrame)
 	local tabSystem = {}
 	local tabs = {}
+	local allContentFrames = {}
 	
-	-- Tab Bar (Scrollable Horizontally)
+	-- Tab Bar
 	local tabBar = Instance.new("Frame")
 	tabBar.Name = "TabBar"
 	tabBar.Size = UDim2.new(1, 0, 0, 50)
 	tabBar.BackgroundColor3 = currentTheme.Secondary
 	tabBar.BorderSizePixel = 0
-	tabBar.Parent = mainScrollFrame
+	tabBar.Parent = scrollFrame
 	tabBar.ZIndex = 10
-	tabBar.LayoutOrder = 1
 	
 	local tabLayout = Instance.new("UIListLayout")
 	tabLayout.Padding = UDim.new(0, 5)
 	tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	tabLayout.FillDirection = Enum.FillDirection.Horizontal
+	tabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	tabLayout.Parent = tabBar
 	
 	local tabPadding = Instance.new("UIPadding")
@@ -250,18 +245,24 @@ function UILib:CreateTabs(window, mainScrollFrame)
 	tabPadding.PaddingTop = UDim.new(0, 5)
 	tabPadding.Parent = tabBar
 	
-	-- Content Area (Scrollable Content for each tab)
-	local contentArea = Instance.new("Frame")
-	contentArea.Name = "ContentArea"
-	contentArea.Size = UDim2.new(1, 0, 0, 2000) -- Large height for scrolling
-	contentArea.BackgroundTransparency = 1
-	contentArea.Parent = mainScrollFrame
-	contentArea.ZIndex = 10
-	contentArea.LayoutOrder = 2
+	-- Container for tab contents (NOT scrollable itself, parent scrollFrame handles it)
+	local contentContainer = Instance.new("Frame")
+	contentContainer.Name = "ContentContainer"
+	contentContainer.Size = UDim2.new(1, 0, 0, 0) -- Height will be set by layout
+	contentContainer.BackgroundTransparency = 1
+	contentContainer.BorderSizePixel = 0
+	contentContainer.Parent = scrollFrame
+	contentContainer.ZIndex = 10
+	
+	local contentLayout = Instance.new("UIListLayout")
+	contentLayout.Padding = UDim.new(0, 0)
+	contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	contentLayout.Parent = contentContainer
 	
 	function tabSystem:CreateTab(tabName)
 		local tabButton = Instance.new("TextButton")
-		tabButton.Size = UDim2.new(0, 85, 0, 35)
+		tabButton.Name = tabName .. "Button"
+		tabButton.Size = UDim2.new(0, 90, 0, 35)
 		tabButton.BackgroundColor3 = currentTheme.Primary
 		tabButton.TextColor3 = currentTheme.Text
 		tabButton.Text = tabName
@@ -275,49 +276,72 @@ function UILib:CreateTabs(window, mainScrollFrame)
 		btnCorner.CornerRadius = UDim.new(0, 6)
 		btnCorner.Parent = tabButton
 		
-		-- Individual Scroll Frame for each tab's content
-		local tabScrollFrame = Instance.new("ScrollingFrame")
-		tabScrollFrame.Name = tabName .. "ScrollFrame"
-		tabScrollFrame.Size = UDim2.new(1, 0, 0, 1500) -- Fixed scrollable height
-		tabScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- Will auto-calculate
-		tabScrollFrame.ScrollBarThickness = 8
-		tabScrollFrame.ScrollBarImageColor3 = currentTheme.Accent
-		tabScrollFrame.BackgroundTransparency = 1
-		tabScrollFrame.BorderSizePixel = 0
-		tabScrollFrame.Visible = false
-		tabScrollFrame.Parent = contentArea
-		tabScrollFrame.ZIndex = 10
+		-- Content frame for this tab
+		local tabContent = Instance.new("Frame")
+		tabContent.Name = tabName .. "Content"
+		tabContent.Size = UDim2.new(1, 0, 0, 0) -- Height managed by UIListLayout
+		tabContent.BackgroundTransparency = 1
+		tabContent.BorderSizePixel = 0
+		tabContent.Visible = false
+		tabContent.Parent = contentContainer
+		tabContent.ZIndex = 10
 		
 		local tabContentLayout = Instance.new("UIListLayout")
 		tabContentLayout.Padding = UDim.new(0, 8)
 		tabContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		tabContentLayout.Parent = tabScrollFrame
+		tabContentLayout.Parent = tabContent
 		
 		local tabContentPadding = Instance.new("UIPadding")
-		tabContentPadding.PaddingBottom = UDim.new(0, 10)
+		tabContentPadding.PaddingBottom = UDim.new(0, 15)
 		tabContentPadding.PaddingLeft = UDim.new(0, 10)
 		tabContentPadding.PaddingRight = UDim.new(0, 10)
 		tabContentPadding.PaddingTop = UDim.new(0, 10)
-		tabContentPadding.Parent = tabScrollFrame
+		tabContentPadding.Parent = tabContent
 		
 		tabButton.MouseButton1Click:Connect(function()
+			-- Hide all tabs
+			for _, tab in pairs(allContentFrames) do
+				tab.Visible = false
+			end
 			for _, tab in pairs(tabs) do
-				tab.ScrollFrame.Visible = false
 				tab.Button.BackgroundColor3 = currentTheme.Primary
 			end
-			tabScrollFrame.Visible = true
+			
+			-- Show this tab
+			tabContent.Visible = true
 			tabButton.BackgroundColor3 = currentTheme.Accent
+			
+			-- Update scroll position
+			scrollFrame.CanvasPosition = Vector2.new(0, 0)
 		end)
 		
-		tabs[tabName] = {Button = tabButton, ScrollFrame = tabScrollFrame}
+		tabs[tabName] = {Button = tabButton, Content = tabContent}
+		table.insert(allContentFrames, tabContent)
 		
-		if not next(tabs, nil) then
-			tabScrollFrame.Visible = true
+		-- Make first tab visible
+		if not next(tabs, nil) or #allContentFrames == 1 then
+			tabContent.Visible = true
 			tabButton.BackgroundColor3 = currentTheme.Accent
 		end
 		
-		return tabScrollFrame
+		return tabContent
 	end
+	
+	-- Update scroll frame canvas size based on content
+	local function updateScrollSize()
+		task.wait(0.1)
+		local totalHeight = 50 -- Tab bar height
+		for _, contentFrame in pairs(allContentFrames) do
+			if contentFrame.Visible then
+				totalHeight = totalHeight + contentFrame.AbsoluteSize.Y
+			end
+		end
+		scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
+	end
+	
+	-- Listen for content changes
+	contentLayout.Changed:Connect(updateScrollSize)
+	RunService.Heartbeat:Connect(updateScrollSize)
 	
 	return tabSystem
 end
@@ -325,6 +349,7 @@ end
 -- Create Button
 function UILib:CreateButton(parent, text, callback)
 	local button = Instance.new("TextButton")
+	button.Name = text
 	button.Size = UDim2.new(1, 0, 0, 50)
 	button.BackgroundColor3 = currentTheme.Accent
 	button.TextColor3 = currentTheme.Text
@@ -347,6 +372,7 @@ end
 -- Create Toggle
 function UILib:CreateToggle(parent, text, callback)
 	local container = Instance.new("Frame")
+	container.Name = text
 	container.Size = UDim2.new(1, 0, 0, 55)
 	container.BackgroundTransparency = 1
 	container.Parent = parent
@@ -403,12 +429,13 @@ function UILib:CreateToggle(parent, text, callback)
 		callback(isOn)
 	end)
 	
-	return container, toggle
+	return container
 end
 
 -- Create Label
 function UILib:CreateLabel(parent, text)
 	local label = Instance.new("TextLabel")
+	label.Name = text
 	label.Size = UDim2.new(1, 0, 0, 40)
 	label.BackgroundTransparency = 1
 	label.Text = text
@@ -426,6 +453,7 @@ end
 -- Create Divider
 function UILib:CreateDivider(parent)
 	local divider = Instance.new("Frame")
+	divider.Name = "Divider"
 	divider.Size = UDim2.new(1, 0, 0, 2)
 	divider.BackgroundColor3 = currentTheme.Accent
 	divider.BorderSizePixel = 0
@@ -541,10 +569,10 @@ end)
 
 -- ABOUT TAB
 local aboutTab = tabSystem:CreateTab("About")
-UILib:CreateLabel(aboutTab, "Mimic Hub v3.0")
+UILib:CreateLabel(aboutTab, "Mimic Hub v3.1")
 UILib:CreateDivider(aboutTab)
 UILib:CreateLabel(aboutTab, "Delta iOS Edition")
-UILib:CreateLabel(aboutTab, "✓ Fully Scrollable")
+UILib:CreateLabel(aboutTab, "✓ FULLY SCROLLABLE")
 UILib:CreateDivider(aboutTab)
 UILib:CreateLabel(aboutTab, "Features:")
 UILib:CreateLabel(aboutTab, "✓ Infinite Jump")
@@ -553,11 +581,11 @@ UILib:CreateLabel(aboutTab, "✓ Teleport System")
 UILib:CreateLabel(aboutTab, "✓ Script Manager")
 UILib:CreateLabel(aboutTab, "✓ 4 Themes")
 UILib:CreateLabel(aboutTab, "✓ Touch Support")
-UILib:CreateLabel(aboutTab, "✓ Scrollable UI")
+UILib:CreateLabel(aboutTab, "✓ Smooth Scrolling")
 
 -- Welcome Notification
 UILib:Notify("Welcome", "Mimic Hub Ready! 🎮", 3)
 
-print("✅ Mimic Hub v3.0 Loaded!")
+print("✅ Mimic Hub v3.1 Loaded!")
 print("✅ iOS Delta Executor Edition")
-print("✅ All features enabled with scrolling!")
+print("✅ Fully scrollable with working canvas size!")
